@@ -1,15 +1,16 @@
-import torch
-import io
-import onnx
-import onnxruntime.training.onnxblock as onnxblock
-import onnxruntime
-from onnxruntime.capi import _pybind_state as C
-import pytest
-import tempfile
-import os
 import copy
-import numpy as np
+import io
+import os
+import tempfile
 
+import numpy as np
+import onnx
+import pytest
+import torch
+
+import onnxruntime
+import onnxruntime.training.onnxblock as onnxblock
+from onnxruntime.capi import _pybind_state as C
 
 # PyTorch Module definitions
 
@@ -128,9 +129,7 @@ def _get_onnx_model(torch_model, model_inputs):
 
 
 def _to_numpy(tensor):
-    return (
-        tensor.detach().cpu().numpy() if tensor.requires_grad else tensor.cpu().numpy()
-    )
+    return tensor.detach().cpu().numpy() if tensor.requires_grad else tensor.cpu().numpy()
 
 
 def _get_models(device, N, D_in, H, D_out):
@@ -164,9 +163,7 @@ def _get_training_ort_inputs(x, target, pt_model, onnx_model, target_type=None):
         ort_inputs[onnx_model.graph.input[1].name]
     for name, param in pt_model.named_parameters():
         ort_inputs[name] = _to_numpy(copy.deepcopy(param))
-        ort_inputs[f"{name}_grad.accumulation.buffer"] = _to_numpy(
-            torch.zeros_like(param)
-        )
+        ort_inputs[f"{name}_grad.accumulation.buffer"] = _to_numpy(torch.zeros_like(param))
     ort_inputs["lazy_reset_grad"] = np.full(1, True)
 
     return ort_inputs
@@ -225,9 +222,7 @@ def test_mse_loss_execution():
     # When
     with tempfile.NamedTemporaryFile(suffix=".onnx") as onnx_fo:
         onnx.save(onnx_model, onnx_fo.name)
-        ort_session = onnxruntime.InferenceSession(
-            onnx_fo.name, providers=C.get_available_providers()
-        )
+        ort_session = onnxruntime.InferenceSession(onnx_fo.name, providers=C.get_available_providers())
 
         ort_outs = ort_session.run(ort_output_names, ort_inputs)
         torch_outs = mse_loss(pt_model(x), target)
@@ -253,9 +248,7 @@ def test_crossentropy_loss_execution():
     ort_output_names = [onnx_model.graph.output[0].name]
     ort_inputs = {
         onnx_model.graph.input[0].name: _to_numpy(copy.deepcopy(x)),
-        onnx_model.graph.input[1].name: _to_numpy(
-            copy.deepcopy(target).type(torch.int32)
-        ),
+        onnx_model.graph.input[1].name: _to_numpy(copy.deepcopy(target).type(torch.int32)),
     }
 
     def crossentropy_loss(prediction, target):
@@ -265,9 +258,7 @@ def test_crossentropy_loss_execution():
     # When
     with tempfile.NamedTemporaryFile(suffix=".onnx") as onnx_fo:
         onnx.save(onnx_model, onnx_fo.name)
-        ort_session = onnxruntime.InferenceSession(
-            onnx_fo.name, providers=C.get_available_providers()
-        )
+        ort_session = onnxruntime.InferenceSession(onnx_fo.name, providers=C.get_available_providers())
 
         ort_outs = ort_session.run(ort_output_names, ort_inputs)
         torch_outs = crossentropy_loss(pt_model(x), target)
@@ -303,9 +294,7 @@ def test_bcewithlogits_loss_execution():
     # When
     with tempfile.NamedTemporaryFile(suffix=".onnx") as onnx_fo:
         onnx.save(onnx_model, onnx_fo.name)
-        ort_session = onnxruntime.InferenceSession(
-            onnx_fo.name, providers=C.get_available_providers()
-        )
+        ort_session = onnxruntime.InferenceSession(onnx_fo.name, providers=C.get_available_providers())
 
         ort_outs = ort_session.run(ort_output_names, ort_inputs)
         torch_outs = bcewithlogits_loss(pt_model(x), target)
@@ -338,9 +327,7 @@ def test_mse_loss_training_graph_execution():
     # When
     with tempfile.NamedTemporaryFile(suffix=".onnx") as onnx_fo:
         onnx.save(onnx_model, onnx_fo.name)
-        ort_session = onnxruntime.InferenceSession(
-            onnx_fo.name, providers=C.get_available_providers()
-        )
+        ort_session = onnxruntime.InferenceSession(onnx_fo.name, providers=C.get_available_providers())
 
         ort_outs = ort_session.run(ort_output_names, ort_inputs)
         torch_outs = mse_loss(pt_model(x), target)
@@ -370,9 +357,7 @@ def test_crossentropy_loss_training_graph_execution():
         _ = simple_model(onnx_model.graph.output[0].name)
 
     ort_output_names = _get_training_ort_output_names(pt_model, onnx_model)
-    ort_inputs = _get_training_ort_inputs(
-        x, target, pt_model, onnx_model, target_type=torch.int32
-    )
+    ort_inputs = _get_training_ort_inputs(x, target, pt_model, onnx_model, target_type=torch.int32)
 
     def crossentropy_loss(prediction, target):
         loss = torch.nn.CrossEntropyLoss()
@@ -381,9 +366,7 @@ def test_crossentropy_loss_training_graph_execution():
     # When
     with tempfile.NamedTemporaryFile(suffix=".onnx") as onnx_fo:
         onnx.save(onnx_model, onnx_fo.name)
-        ort_session = onnxruntime.InferenceSession(
-            onnx_fo.name, providers=C.get_available_providers()
-        )
+        ort_session = onnxruntime.InferenceSession(onnx_fo.name, providers=C.get_available_providers())
 
         ort_outs = ort_session.run(ort_output_names, ort_inputs)
         torch_outs = crossentropy_loss(pt_model(x), target)
@@ -422,9 +405,7 @@ def test_bcewithlogits_loss_training_graph_execution():
     # When
     with tempfile.NamedTemporaryFile(suffix=".onnx") as onnx_fo:
         onnx.save(onnx_model, onnx_fo.name)
-        ort_session = onnxruntime.InferenceSession(
-            onnx_fo.name, providers=C.get_available_providers()
-        )
+        ort_session = onnxruntime.InferenceSession(onnx_fo.name, providers=C.get_available_providers())
 
         ort_outs = ort_session.run(ort_output_names, ort_inputs)
         torch_outs = bcewithlogits_loss(pt_model(x), target)
@@ -440,9 +421,11 @@ def test_bcewithlogits_loss_training_graph_execution():
 
 
 @pytest.mark.parametrize(
-    "graph", [SimpleTrainingModelWithMSELoss, SimpleTrainingModelWithCrossEntropyLoss]
+    "graph",
+    [SimpleTrainingModelWithMSELoss, SimpleTrainingModelWithCrossEntropyLoss, SimpleTrainingModelWithBCEWithLogitsLoss],
 )
-def test_adamw_optimizer_composition(graph):
+@pytest.mark.parametrize("grad_clipping", [None, onnxblock.optim.ClipGradNorm(2.5)])
+def test_adamw_optimizer_composition(graph, grad_clipping):
     # Given
     device = "cuda"
     N, D_in, H, D_out = 64, 784, 500, 10
@@ -453,7 +436,7 @@ def test_adamw_optimizer_composition(graph):
     with onnxblock.onnx_model(onnx_model):
         _ = simple_model(onnx_model.graph.output[0].name)
 
-    optimizer = onnxblock.optim.AdamW()
+    optimizer = onnxblock.optim.AdamW(clip_grad=grad_clipping)
     with onnxblock.onnx_model() as accessor:
         _ = optimizer(simple_model.parameters())
         optimizer_model = accessor.model
@@ -475,14 +458,12 @@ def test_adamw_optimizer_execution():
 
     optimizer = onnxblock.optim.AdamW()
     with onnxblock.onnx_model() as accessor:
-        _ = optimizer(simple_model.parameters())
+        output_name = optimizer(simple_model.parameters())
         optimizer_model = accessor.model
 
     learning_rate = 0.001
     step = 1
-    ort_output_names = []
-    for name, _ in pt_model.named_parameters():
-        ort_output_names.append(f"{name}.out")
+    ort_output_names = [output_name]
 
     def mse_loss(prediction, target):
         loss = torch.nn.MSELoss()
@@ -501,16 +482,12 @@ def test_adamw_optimizer_execution():
         }
         for name, param in pt_model.named_parameters():
             ort_inputs[name] = _to_numpy(copy.deepcopy(param))
-            ort_inputs[f"{name}_grad.accumulation.out"] = _to_numpy(
-                copy.deepcopy(param.grad)
-            )
+            ort_inputs[f"{name}_grad"] = _to_numpy(copy.deepcopy(param.grad))
             ort_inputs[f"{name}.exp_avg"] = _to_numpy(torch.zeros_like(param))
             ort_inputs[f"{name}.exp_avg_sq"] = _to_numpy(torch.zeros_like(param))
 
         # Then no error occurs when executing the model
-        ort_session = onnxruntime.InferenceSession(
-            onnx_fo.name, providers=C.get_available_providers()
-        )
+        ort_session = onnxruntime.InferenceSession(onnx_fo.name, providers=C.get_available_providers())
         _ = ort_session.run(ort_output_names, ort_inputs)
 
 
@@ -529,9 +506,7 @@ def test_retrieve_parameters():
 
     # Then
     assert not non_trainable_params
-    for ort_param, (pt_param_name, pt_param) in zip(
-        trainable_params, pt_model.named_parameters()
-    ):
+    for ort_param, (pt_param_name, pt_param) in zip(trainable_params, pt_model.named_parameters()):
         assert ort_param.name == pt_param_name
         assert np.allclose(
             np.frombuffer(ort_param.raw_data, dtype=np.float32).reshape(pt_param.shape),
@@ -550,10 +525,7 @@ def test_retrieve_parameters_before_building_gradient_graph():
     # When / Then
     with pytest.raises(Exception) as ex_info:
         _, _ = simple_model.parameters()
-    assert (
-        "Please build the training model first before trying to retrieve the parameters."
-        in str(ex_info.value)
-    )
+    assert "Please build the training model first before trying to retrieve the parameters." in str(ex_info.value)
 
 
 def test_save_checkpoint():
@@ -570,9 +542,7 @@ def test_save_checkpoint():
     # When
     with tempfile.TemporaryDirectory() as checkpoint_dir_name:
         checkpoint_file_path = os.path.join(checkpoint_dir_name, "checkpoint")
-        onnxblock.save_checkpoint(
-            (trainable_params, non_trainable_params), checkpoint_file_path
-        )
+        onnxblock.save_checkpoint((trainable_params, non_trainable_params), checkpoint_file_path)
 
         # Then
         assert os.path.exists(checkpoint_file_path)
@@ -623,3 +593,64 @@ def test_set_requires_grad_on_inputs():
 
     assert expected_input_gradient_buffer_name in graph_input_names
     assert expected_input_gradient_output_name in graph_output_names
+
+
+def test_grad_clipping_execution():
+    # Given
+    device = "cuda"
+    N, D_in, H, D_out = 64, 784, 500, 10
+    pt_model, _ = _get_models(device, N, D_in, H, D_out)
+    x = torch.randn(N, D_in, device=device)
+    target = torch.randn(N, D_out, device=device)
+
+    # Prepare the onnx model with only grad clipping
+    onnx_model = onnx.ModelProto()
+    onnx_model.graph.name = "AdamW Optimizer Model"
+    onnx_model.producer_name = "grad clipping test"
+    onnx_model.opset_import.extend(onnxblock.optim.optim._OPSET_IMPORTS)
+    onnx_model.ir_version = onnx.IR_VERSION
+
+    class GradClippingModel(onnxblock.Model):
+        def __init__(self, max_norm):
+            self._grad_clip = onnxblock.optim.ClipGradNorm(max_norm)
+
+        def build(self, *grad_names):
+            return self._grad_clip(*grad_names)
+
+    grad_names = []
+    for name, param in pt_model.named_parameters():
+        grad_names.append(f"{name}_grad")
+
+        onnx_model.graph.input.append(
+            onnx.helper.make_tensor_value_info(grad_names[-1], onnx.TensorProto.FLOAT, param.shape)
+        )
+
+    grad_clip = GradClippingModel(2.5)
+
+    with onnxblock.onnx_model(onnx_model):
+        ort_output_names = grad_clip(*grad_names)
+
+    def mse_loss(prediction, target):
+        loss = torch.nn.MSELoss()
+        return loss(prediction, target)
+
+    # When
+    with tempfile.NamedTemporaryFile(suffix=".onnx") as onnx_fo:
+        onnx.save(onnx_model, onnx_fo.name)
+
+        loss = mse_loss(pt_model(x), target)
+        loss.backward()
+
+        ort_inputs = {}
+        for name, param in pt_model.named_parameters():
+            ort_inputs[f"{name}_grad"] = _to_numpy(copy.deepcopy(param.grad))
+
+        torch.nn.utils.clip_grad_norm_(pt_model.parameters(), 2.5)
+
+        # Then no error occurs when executing the model
+        ort_session = onnxruntime.InferenceSession(onnx_fo.name, providers=C.get_available_providers())
+        ort_outs = ort_session.run(ort_output_names, ort_inputs)
+
+        # assert all the gradients are close
+        for ort_grad, pt_param in zip(ort_outs, pt_model.parameters()):
+            assert np.allclose(ort_grad, _to_numpy(pt_param.grad))

@@ -3,10 +3,11 @@
 # _building_blocks.py
 
 from abc import ABC, abstractmethod
+
 import onnx
 
-import onnxruntime.training.onnxblock.model_accessor as accessor
 import onnxruntime.training.onnxblock._graph_utils as graph_utils
+import onnxruntime.training.onnxblock.model_accessor as accessor
 
 
 class Block(ABC):
@@ -50,9 +51,7 @@ class _BinaryOp(Block):
 
         # create the graph node for sub
         node_input_names = [input_name1, input_name2]
-        node_output_name = graph_utils.generate_random_graph_name(
-            f"{self._op_name.lower()}_output"
-        )
+        node_output_name = graph_utils.generate_random_graph_name(f"{self._op_name.lower()}_output")
         node_output_names = [node_output_name]
         node = onnx.helper.make_node(
             self._op_name,
@@ -86,6 +85,13 @@ class Mul(_BinaryOp):
         super(Mul, self).__init__("Mul")
 
 
+class Div(_BinaryOp):
+    """Adds Div node to an onnx model."""
+
+    def __init__(self):
+        super(Div, self).__init__("Div")
+
+
 class Pow(Block):
     """Adds Pow node to the onnx model."""
 
@@ -101,9 +107,7 @@ class Pow(Block):
         # create the graph initializer for the exponent
         pow_node_exponent_name = graph_utils.generate_random_graph_name("pow_exponent")
         onnx_model.graph.initializer.append(
-            onnx.helper.make_tensor(
-                pow_node_exponent_name, onnx.TensorProto.FLOAT, [1], [self._exponent]
-            )
+            onnx.helper.make_tensor(pow_node_exponent_name, onnx.TensorProto.FLOAT, [1], [self._exponent])
         )
 
         # create the graph node for pow
@@ -122,6 +126,8 @@ class Pow(Block):
 
 
 class _UnaryOp(Block):
+    """Base class for all nodes that take in a single argument."""
+
     def __init__(self, op_name):
         super(_UnaryOp, self).__init__()
         self._op_name = op_name
@@ -136,9 +142,7 @@ class _UnaryOp(Block):
 
         # create the graph node for this unary op
         node_input_names = [input_name]
-        node_output_name = graph_utils.generate_random_graph_name(
-            f"{self._op_name.lower()}_output"
-        )
+        node_output_name = graph_utils.generate_random_graph_name(f"{self._op_name.lower()}_output")
         node_output_names = [node_output_name]
         node = onnx.helper.make_node(
             self._op_name,
@@ -166,15 +170,127 @@ class ReduceSum(_UnaryOp):
 
 
 class Sigmoid(_UnaryOp):
+    """Adds Sigmoid node to the onnx model."""
+
     def __init__(self):
         super(Sigmoid, self).__init__("Sigmoid")
 
 
 class Log(_UnaryOp):
+    """Adds Log node to the onnx model."""
+
     def __init__(self):
         super(Log, self).__init__("Log")
 
 
 class Neg(_UnaryOp):
+    """Adds Neg node to the onnx model."""
+
     def __init__(self):
         super(Neg, self).__init__("Neg")
+
+
+class SequenceConstruct(Block):
+    """Adds SequenceConstruct node to the onnx model."""
+
+    def __init__(self):
+        super(SequenceConstruct, self).__init__()
+
+    def build(self, *sequence_input_names):
+        # get the model to manipulate
+        onnx_model = accessor.global_accessor.model
+
+        # create the graph node for this sequence construct node
+        sc_node_input_names = list(sequence_input_names)
+        sc_node_output_name = graph_utils.generate_random_graph_name("sequenceconstruct_output")
+        sc_node_output_names = [sc_node_output_name]
+        sc_node = onnx.helper.make_node(
+            "SequenceConstruct",
+            sc_node_input_names,
+            sc_node_output_names,
+            graph_utils.generate_random_graph_name("SequenceConstruct"),
+        )
+        onnx_model.graph.node.append(sc_node)
+
+        return sc_node_output_name
+
+
+class ReduceAllL2(Block):
+    """Adds ReduceAllL2 node to the onnx model.
+
+    ReduceAllL2 is a part of the com.microsoft domain and might not be accessible outside this domain.
+    """
+
+    def __init__(self):
+        super(ReduceAllL2, self).__init__()
+
+    def build(self, *reduce_node_input_names):
+        # get the model to manipulate
+        onnx_model = accessor.global_accessor.model
+
+        # create the graph node for this reducealll2 node
+        reduce_node_input_names = list(reduce_node_input_names)
+        reduce_node_output_name = graph_utils.generate_random_graph_name("reducealll2_output")
+        reduce_node_output_names = [reduce_node_output_name]
+        reduce_node = onnx.helper.make_node(
+            "ReduceAllL2",
+            reduce_node_input_names,
+            reduce_node_output_names,
+            graph_utils.generate_random_graph_name("ReduceAllL2"),
+            domain="com.microsoft",
+        )
+        onnx_model.graph.node.append(reduce_node)
+        # TODO: register shape inference with onnx
+        onnx_model.graph.value_info.append(
+            onnx.helper.make_tensor_value_info(reduce_node_output_name, onnx.TensorProto.FLOAT, [1])
+        )
+
+        return reduce_node_output_name
+
+
+class Clip(Block):
+    """Adds Clip node to the onnx model."""
+
+    def __init__(self, clip_min=None, clip_max=None):
+        super(Clip, self).__init__()
+
+        self._min = clip_min
+        self._max = clip_max
+
+    def build(self, clip_input_name):
+        # get the model to manipulate
+        onnx_model = accessor.global_accessor.model
+
+        # create the graph initializer for the clip min
+        clip_node_min_name = ""
+        if self._min is not None:
+            clip_node_min_name = graph_utils.generate_random_graph_name("clip_min")
+            onnx_model.graph.initializer.append(
+                onnx.helper.make_tensor(clip_node_min_name, onnx.TensorProto.FLOAT, [1], [self._min])
+            )
+
+        # create the graph initializer for the clip max
+        clip_node_max_name = ""
+        if self._max is not None:
+            clip_node_max_name = graph_utils.generate_random_graph_name("clip_max")
+            onnx_model.graph.initializer.append(
+                onnx.helper.make_tensor(clip_node_max_name, onnx.TensorProto.FLOAT, [1], [self._max])
+            )
+
+        # create the graph node for this clip node
+        clip_node_input_names = [
+            clip_input_name,
+            clip_node_min_name,
+            clip_node_max_name,
+        ]
+        clip_node_output_name = graph_utils.generate_random_graph_name("clip_output")
+        clip_node_output_names = [clip_node_output_name]
+        clip_node = onnx.helper.make_node(
+            "Clip",
+            clip_node_input_names,
+            clip_node_output_names,
+            graph_utils.generate_random_graph_name("Clip"),
+        )
+        onnx_model.graph.node.append(clip_node)
+
+        return clip_node_output_name

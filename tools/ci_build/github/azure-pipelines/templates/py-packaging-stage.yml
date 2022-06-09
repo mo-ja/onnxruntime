@@ -80,7 +80,7 @@ stages:
         displayName: Login to ACR
         inputs:
           command: login
-          containerRegistry: "onnxruntimecibuildenvironment."
+          containerRegistry: "onnxruntimecibuildenvironment"
 
       - checkout: self
         clean: true

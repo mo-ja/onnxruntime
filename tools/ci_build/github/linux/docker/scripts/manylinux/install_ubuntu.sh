@@ -10,4 +10,4 @@ apt-get install -y gdb  build-essential tar unzip  make  aria2  bzip2
 
 # Install Java
 # Install automatic documentation generation dependencies
-apt-get install -y java-11-openjdk-devel graphviz
+apt-get install -y openjdk-11-jdk graphviz

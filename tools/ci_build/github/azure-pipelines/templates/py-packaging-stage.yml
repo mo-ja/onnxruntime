@@ -80,7 +80,7 @@ stages:
         displayName: Login to ACR
         inputs:
           command: login
-          containerRegistry: "onnxruntimecibuildenvironment"
+          containerRegistry: "onnxruntimebuildcache"
 
       - checkout: self
         clean: true
@@ -93,7 +93,7 @@ stages:
           Dockerfile: tools/ci_build/github/linux/docker/Dockerfile.manylinux_2_27_cpu
           Context: tools/ci_build/github/linux/docker
           DockerBuildArgs: "--build-arg BUILD_UID=$( id -u )"
-          Repository: onnxruntimecpubuild
+          Repository: onnxruntimecpu227build
 
       - task: CmdLine@2
         displayName: 'Build Python Wheel'

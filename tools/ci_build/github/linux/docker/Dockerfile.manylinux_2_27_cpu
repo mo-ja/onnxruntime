@@ -1,4 +1,4 @@
-FROM onnxruntimecibuildenvironment.azurecr.io/manylinux_2_27_x86_64:latest
+FROM onnxruntimebuildcache.azurecr.io/manylinux_2_27_x86_64:latest
 
 ENV PATH /usr/local/gradle/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 

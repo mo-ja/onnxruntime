@@ -76,6 +76,13 @@ stages:
           Python310:
             PythonVersion: '3.10'
       steps:
+      - task: AzureCLI@2
+        inputs:
+          azureSubscription: 'AIInfraBuildOnnxRuntimeOSS'
+          scriptType: 'bash'
+          scriptLocation: 'inlineScript'
+          inlineScript: 'docker login onnxruntimecibuildenvironment.azurecr.io -u onnxruntimecibuildenvironment -p ${{ variables.acr_key }}'
+
       - checkout: self
         clean: true
         submodules: recursive

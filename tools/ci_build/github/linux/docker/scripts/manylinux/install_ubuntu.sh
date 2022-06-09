@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -ex
 
 os_major_version=$(cat /etc/lsb-release | tr -dc '0-9.'|cut -d \. -f1)

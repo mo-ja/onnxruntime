@@ -5,7 +5,7 @@ set -e -x
 if [ -f /etc/redhat-release ]; then
   yum update && yum -y install graphviz
   os_major_version=$(cat /etc/redhat-release | tr -dc '0-9.'|cut -d \. -f1)
-elif [ -f /etc/lsb-release ]; then
+elif [ -f /etc/os-release ]; then
   apt-get update && apt-get install -y graphviz
   os_major_version=$(cat /etc/lsb-release | tr -dc '0-9.'|cut -d \. -f1)
 else

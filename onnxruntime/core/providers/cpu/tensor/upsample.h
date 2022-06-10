@@ -56,11 +56,11 @@ struct BilinearParams {
 
   BufferUniquePtr idx_scale_data_buffer_holder;
 
-  int32_t* input_width_mul_y1;
-  int32_t* input_width_mul_y2;
+  int64_t* input_width_mul_y1;
+  int64_t* input_width_mul_y2;
 
-  int32_t* in_x1;
-  int32_t* in_x2;
+  int64_t* in_x1;
+  int64_t* in_x2;
 
   float* dx1;
   float* dx2;
@@ -76,17 +76,17 @@ struct BilinearParamsInteger {
 
   BufferUniquePtr idx_scale_data_buffer_holder;
 
-  int32_t* input_width_mul_y1;
-  int32_t* input_width_mul_y2;
+  int64_t* input_width_mul_y1;
+  int64_t* input_width_mul_y2;
 
-  int32_t* in_x1;
-  int32_t* in_x2;
+  int64_t* in_x1;
+  int64_t* in_x2;
 
-  int32_t* dx1_scale_10;
-  int32_t* dx2_scale_10;
+  int64_t* dx1_scale_10;
+  int64_t* dx2_scale_10;
 
-  int32_t* dy1_scale_10;
-  int32_t* dy2_scale_10;
+  int64_t* dy1_scale_10;
+  int64_t* dy2_scale_10;
 };
 
 class UpsampleBase {
@@ -417,10 +417,10 @@ class Upsample : public UpsampleBase, public OpKernel {
                      const gsl::span<const int64_t>& output_dims) const;
 };
 
-BilinearParams SetupUpsampleBilinear(const int32_t input_height,
-                                     const int32_t input_width,
-                                     const int32_t output_height,
-                                     const int32_t output_width,
+BilinearParams SetupUpsampleBilinear(const int64_t input_height,
+                                     const int64_t input_width,
+                                     const int64_t output_height,
+                                     const int64_t output_width,
                                      const float height_scale,
                                      const float width_scale,
                                      const std::vector<float>& roi,
@@ -429,12 +429,12 @@ BilinearParams SetupUpsampleBilinear(const int32_t input_height,
                                      bool is_nchw);
 
 template <typename T>
-void UpsampleBilinear(const int32_t batch_size,
-                      const int32_t num_channels,
-                      const int32_t input_height,
-                      const int32_t input_width,
-                      const int32_t output_height,
-                      const int32_t output_width,
+void UpsampleBilinear(const int64_t batch_size,
+                      const int64_t num_channels,
+                      const int64_t input_height,
+                      const int64_t input_width,
+                      const int64_t output_height,
+                      const int64_t output_width,
                       const float height_scale,
                       const float width_scale,
                       const std::vector<float>& roi,
@@ -481,12 +481,12 @@ void UpsampleBilinear(const int32_t batch_size,
 }
 
 template <typename T, bool UseExtrapolation>
-void NhwcUpsampleBilinear(const int32_t batch_size,
-                          const int32_t num_channels,
-                          const int32_t input_height,
-                          const int32_t input_width,
-                          const int32_t output_height,
-                          const int32_t output_width,
+void NhwcUpsampleBilinear(const int64_t batch_size,
+                          const int64_t num_channels,
+                          const int64_t input_height,
+                          const int64_t input_width,
+                          const int64_t output_height,
+                          const int64_t output_width,
                           const float height_scale,
                           const float width_scale,
                           const std::vector<float>& roi,
@@ -507,28 +507,28 @@ void NhwcUpsampleBilinear(const int32_t batch_size,
         static_cast<double>(num_channels * 2),
         [&](std::ptrdiff_t first, std::ptrdiff_t last) {
           for (std::ptrdiff_t i = first; i < last; ++i) {
-            const int32_t x = static_cast<int32_t>(i % output_width);
-            const int32_t y = static_cast<int32_t>(i / output_width);
-            int32_t output_offset = (output_width * y + x) * num_channels;
+            const int64_t x = i % output_width;
+            const int64_t y = i / output_width;
+            int64_t output_offset = (output_width * y + x) * num_channels;
 
             // when use_extrapolation is set and original index of x or y is out of the dim range
             // then use extrapolation_value as the output value.
             if constexpr (UseExtrapolation) {
               if ((p.y_original[y] < 0 || p.y_original[y] > static_cast<float>(input_height - 1)) ||
                   (p.x_original[x] < 0 || p.x_original[x] > static_cast<float>(input_width - 1))) {
-                for (int32_t c = 0; c < num_channels; ++c) {
+                for (int64_t c = 0; c < num_channels; ++c) {
                   Ydata[output_offset + c] = static_cast<T>(extrapolation_value);
                 }
               } else {
-                int32_t X11_offset = (p.input_width_mul_y1[y] + p.in_x1[x]) * num_channels;
-                int32_t X21_offset = (p.input_width_mul_y1[y] + p.in_x2[x]) * num_channels;
-                int32_t X12_offset = (p.input_width_mul_y2[y] + p.in_x1[x]) * num_channels;
-                int32_t X22_offset = (p.input_width_mul_y2[y] + p.in_x2[x]) * num_channels;
+                int64_t X11_offset = (p.input_width_mul_y1[y] + p.in_x1[x]) * num_channels;
+                int64_t X21_offset = (p.input_width_mul_y1[y] + p.in_x2[x]) * num_channels;
+                int64_t X12_offset = (p.input_width_mul_y2[y] + p.in_x1[x]) * num_channels;
+                int64_t X22_offset = (p.input_width_mul_y2[y] + p.in_x2[x]) * num_channels;
                 float X11_coef = p.dx2[x] * p.dy2[y];
                 float X21_coef = p.dx1[x] * p.dy2[y];
                 float X12_coef = p.dx2[x] * p.dy1[y];
                 float X22_coef = p.dx1[x] * p.dy1[y];
-                for (int32_t c = 0; c < num_channels; ++c) {
+                for (int64_t c = 0; c < num_channels; ++c) {
                   T X11 = Xdata[X11_offset + c];
                   T X21 = Xdata[X21_offset + c];
                   T X12 = Xdata[X12_offset + c];
@@ -541,15 +541,15 @@ void NhwcUpsampleBilinear(const int32_t batch_size,
                 }
               }
             } else {
-              int32_t X11_offset = (p.input_width_mul_y1[y] + p.in_x1[x]) * num_channels;
-              int32_t X21_offset = (p.input_width_mul_y1[y] + p.in_x2[x]) * num_channels;
-              int32_t X12_offset = (p.input_width_mul_y2[y] + p.in_x1[x]) * num_channels;
-              int32_t X22_offset = (p.input_width_mul_y2[y] + p.in_x2[x]) * num_channels;
+              int64_t X11_offset = (p.input_width_mul_y1[y] + p.in_x1[x]) * num_channels;
+              int64_t X21_offset = (p.input_width_mul_y1[y] + p.in_x2[x]) * num_channels;
+              int64_t X12_offset = (p.input_width_mul_y2[y] + p.in_x1[x]) * num_channels;
+              int64_t X22_offset = (p.input_width_mul_y2[y] + p.in_x2[x]) * num_channels;
               float X11_coef = p.dx2[x] * p.dy2[y];
               float X21_coef = p.dx1[x] * p.dy2[y];
               float X12_coef = p.dx2[x] * p.dy1[y];
               float X22_coef = p.dx1[x] * p.dy1[y];
-              for (int32_t c = 0; c < num_channels; ++c) {
+              for (int64_t c = 0; c < num_channels; ++c) {
                 T X11 = Xdata[X11_offset + c];
                 T X21 = Xdata[X21_offset + c];
                 T X12 = Xdata[X12_offset + c];
@@ -566,10 +566,10 @@ void NhwcUpsampleBilinear(const int32_t batch_size,
   }
 }
 
-BilinearParamsInteger SetupUpsampleBilinearInteger(const int32_t input_height,
-                                                   const int32_t input_width,
-                                                   const int32_t output_height,
-                                                   const int32_t output_width,
+BilinearParamsInteger SetupUpsampleBilinearInteger(const int64_t input_height,
+                                                   const int64_t input_width,
+                                                   const int64_t output_height,
+                                                   const int64_t output_width,
                                                    const float height_scale,
                                                    const float width_scale,
                                                    const std::vector<float>& roi,
@@ -578,12 +578,12 @@ BilinearParamsInteger SetupUpsampleBilinearInteger(const int32_t input_height,
                                                    bool is_nchw);
 
 template <typename T, bool UseExtrapolation>
-void NhwcUpsampleBilinearInteger(const int32_t batch_size,
-                                 const int32_t num_channels,
-                                 const int32_t input_height,
-                                 const int32_t input_width,
-                                 const int32_t output_height,
-                                 const int32_t output_width,
+void NhwcUpsampleBilinearInteger(const int64_t batch_size,
+                                 const int64_t num_channels,
+                                 const int64_t input_height,
+                                 const int64_t input_width,
+                                 const int64_t output_height,
+                                 const int64_t output_width,
                                  const float height_scale,
                                  const float width_scale,
                                  const std::vector<float>& roi,
@@ -604,28 +604,28 @@ void NhwcUpsampleBilinearInteger(const int32_t batch_size,
         static_cast<double>(num_channels * 2),
         [&](std::ptrdiff_t first, std::ptrdiff_t last) {
           for (std::ptrdiff_t i = first; i < last; ++i) {
-            const int32_t x = static_cast<int32_t>(i % output_width);
-            const int32_t y = static_cast<int32_t>(i / output_width);
-            int32_t output_offset = (output_width * y + x) * num_channels;
+            const int64_t x = i % output_width;
+            const int64_t y = i / output_width;
+            int64_t output_offset = (output_width * y + x) * num_channels;
 
             // when use_extrapolation is set and original index of x or y is out of the dim range
             // then use extrapolation_value as the output value.
             if constexpr (UseExtrapolation) {
               if ((p.y_original[y] < 0 || p.y_original[y] > static_cast<float>(input_height - 1)) ||
                   (p.x_original[x] < 0 || p.x_original[x] > static_cast<float>(input_width - 1))) {
-                for (int32_t c = 0; c < num_channels; ++c) {
+                for (int64_t c = 0; c < num_channels; ++c) {
                   Ydata[output_offset + c] = static_cast<T>(extrapolation_value);
                 }
               } else {
-                int32_t X11_offset = (p.input_width_mul_y1[y] + p.in_x1[x]) * num_channels;
-                int32_t X21_offset = (p.input_width_mul_y1[y] + p.in_x2[x]) * num_channels;
-                int32_t X12_offset = (p.input_width_mul_y2[y] + p.in_x1[x]) * num_channels;
-                int32_t X22_offset = (p.input_width_mul_y2[y] + p.in_x2[x]) * num_channels;
-                int32_t X11_coef_scale_20 = p.dx2_scale_10[x] * p.dy2_scale_10[y];
-                int32_t X21_coef_scale_20 = p.dx1_scale_10[x] * p.dy2_scale_10[y];
-                int32_t X12_coef_scale_20 = p.dx2_scale_10[x] * p.dy1_scale_10[y];
-                int32_t X22_coef_scale_20 = p.dx1_scale_10[x] * p.dy1_scale_10[y];
-                for (int32_t c = 0; c < num_channels; ++c) {
+                int64_t X11_offset = (p.input_width_mul_y1[y] + p.in_x1[x]) * num_channels;
+                int64_t X21_offset = (p.input_width_mul_y1[y] + p.in_x2[x]) * num_channels;
+                int64_t X12_offset = (p.input_width_mul_y2[y] + p.in_x1[x]) * num_channels;
+                int64_t X22_offset = (p.input_width_mul_y2[y] + p.in_x2[x]) * num_channels;
+                int64_t X11_coef_scale_20 = p.dx2_scale_10[x] * p.dy2_scale_10[y];
+                int64_t X21_coef_scale_20 = p.dx1_scale_10[x] * p.dy2_scale_10[y];
+                int64_t X12_coef_scale_20 = p.dx2_scale_10[x] * p.dy1_scale_10[y];
+                int64_t X22_coef_scale_20 = p.dx1_scale_10[x] * p.dy1_scale_10[y];
+                for (int64_t c = 0; c < num_channels; ++c) {
                   T X11 = Xdata[X11_offset + c];
                   T X21 = Xdata[X21_offset + c];
                   T X12 = Xdata[X12_offset + c];
@@ -639,15 +639,15 @@ void NhwcUpsampleBilinearInteger(const int32_t batch_size,
                 }
               }
             } else {
-              int32_t X11_offset = (p.input_width_mul_y1[y] + p.in_x1[x]) * num_channels;
-              int32_t X21_offset = (p.input_width_mul_y1[y] + p.in_x2[x]) * num_channels;
-              int32_t X12_offset = (p.input_width_mul_y2[y] + p.in_x1[x]) * num_channels;
-              int32_t X22_offset = (p.input_width_mul_y2[y] + p.in_x2[x]) * num_channels;
-              int32_t X11_coef_scale_20 = p.dx2_scale_10[x] * p.dy2_scale_10[y];
-              int32_t X21_coef_scale_20 = p.dx1_scale_10[x] * p.dy2_scale_10[y];
-              int32_t X12_coef_scale_20 = p.dx2_scale_10[x] * p.dy1_scale_10[y];
-              int32_t X22_coef_scale_20 = p.dx1_scale_10[x] * p.dy1_scale_10[y];
-              for (int32_t c = 0; c < num_channels; ++c) {
+              int64_t X11_offset = (p.input_width_mul_y1[y] + p.in_x1[x]) * num_channels;
+              int64_t X21_offset = (p.input_width_mul_y1[y] + p.in_x2[x]) * num_channels;
+              int64_t X12_offset = (p.input_width_mul_y2[y] + p.in_x1[x]) * num_channels;
+              int64_t X22_offset = (p.input_width_mul_y2[y] + p.in_x2[x]) * num_channels;
+              int64_t X11_coef_scale_20 = p.dx2_scale_10[x] * p.dy2_scale_10[y];
+              int64_t X21_coef_scale_20 = p.dx1_scale_10[x] * p.dy2_scale_10[y];
+              int64_t X12_coef_scale_20 = p.dx2_scale_10[x] * p.dy1_scale_10[y];
+              int64_t X22_coef_scale_20 = p.dx1_scale_10[x] * p.dy1_scale_10[y];
+              for (int64_t c = 0; c < num_channels; ++c) {
                 T X11 = Xdata[X11_offset + c];
                 T X21 = Xdata[X21_offset + c];
                 T X12 = Xdata[X12_offset + c];

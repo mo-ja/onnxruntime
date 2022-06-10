@@ -7,7 +7,7 @@ apt-get update -y && apt-get upgrade -y
 apt-get install -y software-properties-common
 
 echo "installing for os major version : $os_major_version"
-apt-get install -y gcc gdb  build-essential tar unzip  make cmake aria2  bzip2
+apt-get install -y gcc gdb  build-essential tar unzip  make aria2  bzip2
 
 # Install Java
 # Install automatic documentation generation dependencies

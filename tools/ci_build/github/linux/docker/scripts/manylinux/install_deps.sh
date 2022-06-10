@@ -54,6 +54,18 @@ else
     PYTHON_EXES=("/opt/conda/bin/python")
 fi
 
+export ONNX_ML=1
+export CMAKE_ARGS="-DONNX_GEN_PB_TYPE_STUBS=OFF -DONNX_WERROR=OFF"
+
+for PYTHON_EXE in "${PYTHON_EXES[@]}"
+do
+  ${PYTHON_EXE} -m pip install -r ${0/%install_deps\.sh/requirements\.txt}
+  if ![[ ${PYTHON_EXE} = "/opt/python/cp310-cp310/bin/python3.10" ]]; then
+    ${PYTHON_EXE} -m pip install -r ${0/%install_deps\.sh/..\/training\/ortmodule\/stage1\/requirements_torch_cpu\/requirements.txt}
+  else
+    ${PYTHON_EXE} -m pip install torch==1.11.0
+  fi
+done
 
 
 SYS_LONG_BIT=$(getconf LONG_BIT)
@@ -93,19 +105,6 @@ mv /tmp/src/gradle-6.3 /usr/local/gradle
 if ! [ -x "$(command -v protoc)" ]; then
   source ${0/%install_deps.sh/..\/install_protobuf.sh}
 fi
-
-export ONNX_ML=1
-export CMAKE_ARGS="-DONNX_GEN_PB_TYPE_STUBS=OFF -DONNX_WERROR=OFF"
-
-for PYTHON_EXE in "${PYTHON_EXES[@]}"
-do
-  ${PYTHON_EXE} -m pip install -r ${0/%install_deps\.sh/requirements\.txt}
-  if ![[ ${PYTHON_EXE} = "/opt/python/cp310-cp310/bin/python3.10" ]]; then
-    ${PYTHON_EXE} -m pip install -r ${0/%install_deps\.sh/..\/training\/ortmodule\/stage1\/requirements_torch_cpu\/requirements.txt}
-  else
-    ${PYTHON_EXE} -m pip install torch==1.11.0
-  fi
-done
 
 cd /tmp/src
 GetFile 'https://sourceware.org/pub/valgrind/valgrind-3.16.1.tar.bz2' /tmp/src/valgrind-3.16.1.tar.bz2

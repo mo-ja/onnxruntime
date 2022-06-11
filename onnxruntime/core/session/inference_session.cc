@@ -1930,6 +1930,40 @@ Status InferenceSession::Run(const RunOptions& run_options,
 #ifdef DEBUG_NODE_INPUTS_OUTPUTS
       session_state_->IncrementGraphExecutionCounter();
 #endif
+
+      struct ThreadPoolJumpStarter {
+        using PS = onnxruntime::concurrency::ThreadPool::ParallelSection;
+        concurrency::ThreadPool* intra_tp_;
+        concurrency::ThreadPool* inter_tp_;
+        std::atomic_int32_t& counter_ref_;
+        // Use this to jump start threads and amortize the costs
+        // of initialization between the kernels
+        // note this prevents using explicit PS in the nodes
+        std::optional<PS> ps_intra_;
+        ThreadPoolJumpStarter(concurrency::ThreadPool* intra_tp,
+                              concurrency::ThreadPool* inter_tp,
+                              std::atomic_int32_t& ref) noexcept
+            : intra_tp_(intra_tp), inter_tp_(inter_tp), counter_ref_(ref) {
+          if (counter_ref_.fetch_add(1, std::memory_order_relaxed) == 0) {
+            if (intra_tp_) intra_tp_->EnableSpinning();
+            if (inter_tp_) inter_tp_->EnableSpinning();
+          }
+          if (intra_tp_) {
+            ps_intra_.emplace(intra_tp_);
+          }
+        }
+        ~ThreadPoolJumpStarter() {
+          ps_intra_.reset();
+          if (1 == counter_ref_.fetch_sub(1, std::memory_order_acq_rel)) {
+            if (intra_tp_) intra_tp_->DisableSpinning();
+            if (inter_tp_) inter_tp_->DisableSpinning();
+          }
+        }
+      };
+
+      concurrency::ThreadPool* intra_tp_ = (use_per_session_threads_) ? thread_pool_.get() : intra_op_thread_pool_from_env_;
+      concurrency::ThreadPool* inter_tp = (use_per_session_threads_) ? inter_op_thread_pool_.get() : inter_op_thread_pool_from_env_;
+      ThreadPoolJumpStarter tp_starter(intra_tp_, inter_tp, invocation_refcounter_);
       ORT_CHECK_AND_SET_RETVAL(utils::ExecuteGraph(*session_state_, feeds_fetches_manager, feeds, *p_fetches,
                                                    session_options_.execution_mode, run_options.terminate, run_logger,
                                                    run_options.only_execute_path_to_fetches));
